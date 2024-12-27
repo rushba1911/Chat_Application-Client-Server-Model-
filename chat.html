@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+
+    <!-- Google Fonts for Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif; /* Sans-serif for body text */
+            background: linear-gradient(135deg, #67b26f, #4ca2cd);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            font-family: 'Merriweather', serif; /* Serif for headings */
+            text-align: center;
+            color: #fff;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+
+        #chat {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow-y: scroll;
+            padding: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Message Styling */
+        #chat div {
+            padding: 10px;
+            border-radius: 15px;
+            max-width: 70%;
+            font-size: 16px;
+            line-height: 1.5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .sender {
+            background-color: #e1f7fa;
+            align-self: flex-end;
+            text-align: right;
+        }
+
+        .receiver {
+            background-color: #ffe1e1;
+            align-self: flex-start;
+            text-align: left;
+        }
+
+        /* Timestamp Styling (Smaller Size) */
+        .timestamp {
+            font-size: 5px;
+            color: #aaa;
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+        }
+
+        b {
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        #input-area {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 30px;
+        }
+
+        #input-area input {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #input-area input:focus {
+            border-color: #007bff;
+        }
+
+        #input-area button {
+            background-color: #007bff;
+            color: #fff;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 16px;
+        }
+
+        #input-area button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Attach File Button */
+        #file-container {
+            position: relative;
+        }
+
+        #file {
+            display: none;
+        }
+
+        #file-button {
+            background-color: #f1f1f1;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s ease;
+        }
+
+        #file-button:hover {
+            background-color: #e2e2e2;
+        }
+
+        /* Preview area */
+        #file-preview {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ff0000;
+            display: none;
+        }
+
+        /* Emoji button replaced with custom icon */
+        #emoji-button {
+            background-color: #f1f1f1;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        #emoji-button:hover {
+            background-color: #ccc;
+        }
+
+        /* Emoji panel */
+        #emoji-panel {
+            display: none;
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            border-radius: 8px;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 220px;
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #emoji-panel button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            margin: 5px;
+            transition: transform 0.3s ease;
+        }
+
+        #emoji-panel button:hover {
+            transform: scale(1.2);
+        }
+
+         /* User List Styling */
+         #user-list {
+            width: 100%;
+            max-width: 400px;
+            margin-top: 30px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            position: relative;
+        }
+
+        #user-list h3 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #007bff;
+            font-weight: 600;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #f4f4f4;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .user-item:hover {
+            background-color: #ddd;
+        }
+
+        .user-item i {
+            font-size: 20px;
+            color: #007bff;
+        }
+
+        .user-item span {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .user-item.online {
+            background-color: #e1f7fa;
+        }
+
+        .user-item .status {
+            font-size: 12px;
+            color: #28a745;
+        }
+
+        .user-item .status.offline {
+            color: #dc3545;
+        }
+
+        /* Typing indicator */
+        #typing-indicator {
+            font-style: italic;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 16px;
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 123, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 25px;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+            width: auto;
+            max-width: 90%;
+            white-space: nowrap;
+        }
+
+        /* Typing animation for typing indicator */
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(10px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Adjustments for responsiveness */
+        @media (max-width: 768px) {
+            #typing-indicator {
+                font-size: 14px;
+            }
+        }
+
+        /* Custom Icon for Emoji Button */
+        .emoji-icon {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 24px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <h1>Welcome, {{ username }}!</h1>
+
+    <div id="chat">
+        <!-- Loop through the messages passed from Flask to display them -->
+        {% for message in messages %}
+        <div class="{{ 'sender' if message.sender == username else 'receiver' }}">
+            <b>{{ message.sender }}:</b> {{ message.content }}
+            <div class="timestamp">{{ message.timestamp }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+
+    <div id="typing-indicator" style="display:none;"></div>
+
+    <div id="input-area">
+        <input id="message" type="text" placeholder="Type a message...">
+        
+        <!-- Attach File Button and File Input -->
+        <div id="file-container">
+            <input id="file" type="file" onchange="showFilePreview()">
+            <button id="file-button" onclick="document.getElementById('file').click()">📎</button>
+            <div id="file-preview"></div>
+        </div>
+        
+        <button id="emoji-button" onclick="toggleEmojiPanel()">😊</button>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <div id="emoji-panel">
+        <button onclick="insertEmoji('😊')">😊</button>
+        <button onclick="insertEmoji('😂')">😂</button>
+        <button onclick="insertEmoji('😍')">😍</button>
+        <button onclick="insertEmoji('😢')">😢</button>
+        <button onclick="insertEmoji('😎')">😎</button>
+        <button onclick="insertEmoji('😇')">😇</button>
+        <button onclick="insertEmoji('🤔')">🤔</button>
+        <button onclick="insertEmoji('😜')">😜</button>
+        <button onclick="insertEmoji('😏')">😏</button>
+        <button onclick="insertEmoji('🥳')">🥳</button>
+        <button onclick="insertEmoji('🤩')">🤩</button>
+        <button onclick="insertEmoji('😝')">😝</button>
+        <button onclick="insertEmoji('🤗')">🤗</button>
+        <button onclick="insertEmoji('😻')">😻</button>
+        <button onclick="insertEmoji('❤️')">❤️</button>
+        <button onclick="insertEmoji('💖')">💖</button>
+        <button onclick="insertEmoji('💘')">💘</button>
+        <button onclick="insertEmoji('💓')">💓</button>
+        <button onclick="insertEmoji('💝')">💝</button>
+        <button onclick="insertEmoji('👍')">👍</button>
+        <button onclick="insertEmoji('👎')">👎</button>
+        <button onclick="insertEmoji('🙏')">🙏</button>
+        <button onclick="insertEmoji('💪')">💪</button>
+        <button onclick="insertEmoji('👏')">👏</button>
+        <button onclick="insertEmoji('🙌')">🙌</button>
+        <button onclick="insertEmoji('🤷‍♂️')">🤷‍♂️</button>
+        <button onclick="insertEmoji('💼')">💼</button>
+        <button onclick="insertEmoji('🍕')">🍕</button>
+        <button onclick="insertEmoji('☕')">☕</button>
+    </div>
+
+    <div id="user-list">
+        <h3>Users</h3>
+        {% for user in users %}
+        {% if user.username != username %}
+        <div class="user-item {% if user.online %}online{% endif %}" onclick="startPrivateChat('{{ user.username }}')">
+            <span>{{ user.username }}</span>
+            <span class="status {% if user.online %}online{% else %}offline{% endif %}">
+                {% if user.online %}Online{% else %}Offline{% endif %}
+            </span>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script> <!-- Font Awesome for icon -->
+
+    <script src="static/js/chat.js"></script>
+
+</body>
+
+</html>

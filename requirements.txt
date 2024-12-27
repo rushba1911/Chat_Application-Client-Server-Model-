@@ -1,0 +1,11 @@
+Flask
+Flask-PyMongo
+Pillow
+torch  # Update based on compatibility
+torchvision
+numpy
+Werkzeug
+scikit-learn
+matplotlib
+seaborn
+tqdm
